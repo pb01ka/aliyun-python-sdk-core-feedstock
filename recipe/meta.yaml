@@ -10,22 +10,28 @@ source:
   sha256: 651caad597eb39d4fad6cf85133dffe92837d53bdf62db9d8f37dab6508bb8f9
 
 build:
-  number: 1
-  script: {{ PYTHON }} -m pip install . -vv
+  number: 2
 
 requirements:
   host:
     - python
     - pip
     - setuptools
+    - ca-certificates
   run:
     - python
     - jmespath >=0.9.3,<1.0.0
     - cryptography >=2.9.2
+    - ca-certificates
 
 test:
   imports:
     - aliyunsdkcore
+  commands:
+    # Make sure the vendored cacert.pem was actually replaced by the one
+    # ca-certificates provides, rather than silently left in place.
+    - cmp "$SP_DIR/aliyunsdkcore/vendored/requests/packages/certifi/cacert.pem" "$PREFIX/ssl/cacert.pem"  # [unix]
+    - fc "%SP_DIR%\aliyunsdkcore\vendored\requests\packages\certifi\cacert.pem" "%LIBRARY_PREFIX%\ssl\cacert.pem"  # [win]
 
 about:
   home: https://github.com/aliyun/aliyun-openapi-python-sdk
