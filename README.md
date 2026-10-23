@@ -241,5 +241,6 @@ Feedstock Maintainers
 =====================
 
 * [@maxhora](https://github.com/maxhora/)
+* [@pb01ka](https://github.com/pb01ka/)
 * [@shcheklein](https://github.com/shcheklein/)
 
