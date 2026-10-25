@@ -10,28 +10,36 @@ source:
   sha256: 651caad597eb39d4fad6cf85133dffe92837d53bdf62db9d8f37dab6508bb8f9
 
 build:
-  number: 2
+  number: 3
+  script:
+    # aliyunsdkcore vendors an old copy of requests whose bundled certifi
+    # returns a hardcoded path to its own frozen CA bundle (frozen since
+    # 2018-01-18, long since stale).
+    # Make the vendored requests import the real certifi instead
+    # Also drop the now-dead vendored copy so it never ships.
+    - {{ PYTHON }} -c "p = 'aliyunsdkcore/vendored/requests/certs.py'; s = open(p).read(); open(p, 'w').write(s.replace('from .packages.certifi import where', 'from certifi import where'))"
+    - {{ PYTHON }} -c "import shutil; shutil.rmtree('aliyunsdkcore/vendored/requests/packages/certifi')"
+    - {{ PYTHON }} -m pip install . -vv
 
 requirements:
   host:
     - python
     - pip
     - setuptools
-    - ca-certificates
   run:
     - python
     - jmespath >=0.9.3,<1.0.0
     - cryptography >=2.9.2
-    - ca-certificates
+    - certifi
 
 test:
   imports:
     - aliyunsdkcore
   commands:
-    # Make sure the vendored cacert.pem was actually replaced by the one
-    # ca-certificates provides, rather than silently left in place.
-    - cmp "$SP_DIR/aliyunsdkcore/vendored/requests/packages/certifi/cacert.pem" "$PREFIX/ssl/cacert.pem"  # [unix]
-    - fc "%SP_DIR%\aliyunsdkcore\vendored\requests\packages\certifi\cacert.pem" "%LIBRARY_PREFIX%\ssl\cacert.pem"  # [win]
+    # The vendored certifi copy (and its stale cacert.pem) must be gone...
+    - python -c "import os, aliyunsdkcore; assert not os.path.exists(os.path.join(os.path.dirname(aliyunsdkcore.__file__), 'vendored', 'requests', 'packages', 'certifi'))"
+    # ...and the vendored requests module must resolve certs through the real certifi.
+    - python -c "import certifi, aliyunsdkcore.vendored.requests.certs as c; assert c.where() == certifi.where()"
 
 about:
   home: https://github.com/aliyun/aliyun-openapi-python-sdk
